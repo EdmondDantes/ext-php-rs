@@ -33,8 +33,8 @@ pub mod props;
 pub mod rc;
 pub mod types;
 pub mod zend;
-mod hooks;
-mod hooks;
+
+pub mod hooks;
 
 /// A module typically glob-imported containing the typically required macros
 /// and imports.

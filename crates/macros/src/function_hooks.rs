@@ -42,7 +42,7 @@ pub fn parse_function_hook(args: AttributeArgs, input: ItemFn) -> Result<(TokenS
 
                 #token_stream
 
-                ::ext_php_rs::add_hook(ZendFunctionHook {
+                ::ext_php_rs::hooks::add_function_hook(::ext_php_rs::hooks::ZendFunctionHook {
                     hooked_function_name: #hooked_function_name,
                     handler: #zend_function.ident,
                     previous_handler: None,
