@@ -3,6 +3,7 @@ use std::ffi::c_void;
 use crate::{types, zend};
 use crate::zend::{Function, ExecutorGlobals};
 
+#[derive(Clone)]
 pub struct ZendFunctionHook {
     pub hooked_function_name: String,
     pub handler: extern "C" fn(
