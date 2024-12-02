@@ -10,6 +10,7 @@ mod module;
 mod startup_function;
 mod syn_ext;
 mod zval;
+mod zend_hooks;
 
 use std::{
     collections::HashMap,
@@ -68,12 +69,44 @@ pub fn php_function(args: TokenStream, input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(args as AttributeArgs);
     let input = parse_macro_input!(input as ItemFn);
 
-    match function::parser(args, input) {
+    match function::parser(args, input, Some(true)) {
         Ok((parsed, _)) => parsed,
         Err(e) => syn::Error::new(Span::call_site(), e).to_compile_error(),
     }
     .into()
 }
+
+///
+/// Creates a function callable from PHP but does not declare it as a plugin function.
+///
+#[proc_macro_attribute]
+pub fn php_internal_function(args: TokenStream, input: TokenStream) -> TokenStream {
+    let args = parse_macro_input!(args as AttributeArgs);
+    let input = parse_macro_input!(input as ItemFn);
+
+    match function::parser(args, input, None) {
+        Ok((parsed, _)) => parsed,
+        Err(e) => syn::Error::new(Span::call_site(), e).to_compile_error(),
+    }
+    .into()
+}
+
+///
+/// Declare a Rust function that will act as
+/// a hook for the PHP function specified in the macro parameter.
+///
+#[proc_macro_attribute]
+pub fn php_function_hook(args: TokenStream, input: TokenStream) -> TokenStream {
+    let args = parse_macro_input!(args as AttributeArgs);
+    let input = parse_macro_input!(input as ItemFn);
+
+    match zend_hooks::parse_function_hook(args, input) {
+        Ok((parsed, _)) => parsed,
+        Err(e) => syn::Error::new(Span::call_site(), e).to_compile_error(),
+    }
+    .into()
+}
+
 
 #[proc_macro_attribute]
 pub fn php_module(_: TokenStream, input: TokenStream) -> TokenStream {

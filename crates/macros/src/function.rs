@@ -40,7 +40,7 @@ pub struct Function {
     pub output: Option<(String, bool)>,
 }
 
-pub fn parser(args: AttributeArgs, input: ItemFn) -> Result<(TokenStream, Function)> {
+pub fn parser(args: AttributeArgs, input: ItemFn, should_register: Option<bool>) -> Result<(TokenStream, Function)> {
     let attr_args = match AttrArgs::from_list(&args) {
         Ok(args) => args,
         Err(e) => bail!("Unable to parse attribute arguments: {:?}", e),
@@ -89,12 +89,6 @@ pub fn parser(args: AttributeArgs, input: ItemFn) -> Result<(TokenStream, Functi
         }
     };
 
-    let mut state = STATE.lock();
-
-    if state.built_module && !attr_args.ignore_module {
-        bail!("The `#[php_module]` macro must be called last to ensure functions are registered. To ignore this error, pass the `ignore_module` option into this attribute invocation: `#[php_function(ignore_module)]`");
-    }
-
     let function = Function {
         name: attr_args.name.unwrap_or_else(|| ident.to_string()),
         docs: get_docs(&input.attrs),
@@ -103,6 +97,16 @@ pub fn parser(args: AttributeArgs, input: ItemFn) -> Result<(TokenStream, Functi
         optional,
         output: return_type,
     };
+
+    if !should_register.unwrap_or(true) {
+        return Ok((func, function));
+    }
+
+    let mut state = STATE.lock();
+
+    if state.built_module && !attr_args.ignore_module {
+        bail!("The `#[php_module]` macro must be called last to ensure functions are registered. To ignore this error, pass the `ignore_module` option into this attribute invocation: `#[php_function(ignore_module)]`");
+    }
 
     state.functions.push(function.clone());
 
