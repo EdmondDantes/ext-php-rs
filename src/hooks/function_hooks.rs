@@ -46,7 +46,7 @@ pub fn remove_all_function_hooks() {
 pub fn setup_function_hooks() {
     FUNCTION_HOOKS.with(|hooks| {
         for hook in hooks.borrow().iter() {
-            hook_function(hook.handler as *const c_void (), &hook.hooked_function_name).unwrap();
+            hook_function(hook.handler as *const c_void, &hook.hooked_function_name).unwrap();
         }
     });
 }
@@ -59,7 +59,7 @@ pub fn remove_function_hooks() {
     });
 }
 
-fn hook_function(func_ptr: *const c_void (), func_name: &str) -> Result<(), Box<dyn std::error::Error>> {
+fn hook_function(func_ptr: *const c_void, func_name: &str) -> Result<(), Box<dyn std::error::Error>> {
 
     // Получаем глобальную таблицу функций
     let function_table = ExecutorGlobals::get()

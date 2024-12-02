@@ -100,11 +100,9 @@ pub fn php_function_hook(args: TokenStream, input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(args as AttributeArgs);
     let input = parse_macro_input!(input as ItemFn);
 
-    match function_hooks::parse_function_hook(args, input) {
-        Ok((parsed)) => parsed,
-        Err(e) => syn::Error::new(Span::call_site(), e).to_compile_error(),
-    }
-    .into()
+    function_hooks::parse_function_hook(args, input)
+        .unwrap_or_else(|e| syn::Error::new(Span::call_site(), e).to_compile_error())
+        .into()
 }
 
 
