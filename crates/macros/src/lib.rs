@@ -10,7 +10,7 @@ mod module;
 mod startup_function;
 mod syn_ext;
 mod zval;
-mod zend_hooks;
+mod function_hooks;
 
 use std::{
     collections::HashMap,
@@ -100,8 +100,8 @@ pub fn php_function_hook(args: TokenStream, input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(args as AttributeArgs);
     let input = parse_macro_input!(input as ItemFn);
 
-    match zend_hooks::parse_function_hook(args, input) {
-        Ok((parsed, _)) => parsed,
+    match function_hooks::parse_function_hook(args, input) {
+        Ok((parsed)) => parsed,
         Err(e) => syn::Error::new(Span::call_site(), e).to_compile_error(),
     }
     .into()
