@@ -1,5 +1,6 @@
 #![cfg_attr(windows, feature(abi_vectorcall))]
 use ext_php_rs::{binary::Binary, prelude::*, types::ZendObject, types::Zval};
+use ext_php_rs::hooks::function_hooks::*;
 use std::collections::HashMap;
 
 #[php_function]
@@ -112,8 +113,20 @@ pub fn test_class(string: String, number: i32) -> TestClass {
     }
 }
 
+extern "C" fn startup(_type: i32, _module_number: i32) -> i32 {
+    setup_function_hooks();
+    0
+}
+
+extern "C" fn shutdown(_type: i32, _module_number: i32) -> i32 {
+    remove_all_function_hooks();
+    0
+}
+
 #[php_module]
 pub fn get_module(module: ModuleBuilder) -> ModuleBuilder {
+    let module = module.startup_function(startup)
+                       .shutdown_function(shutdown);
     module
 }
 
@@ -184,4 +197,5 @@ mod integration {
     mod object;
     mod string;
     mod types;
+    mod function_hooks;
 }

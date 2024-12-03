@@ -3,4 +3,4 @@
 //! and allows modifying the behavior of functions.
 //!
 
-mod function_hooks;
+pub mod function_hooks;
