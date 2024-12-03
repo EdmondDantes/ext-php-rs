@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::cell::RefCell;
 use crate::flags::FunctionType;
 use crate::zend::{ExecuteData, Function};
@@ -11,11 +13,23 @@ pub type FunctionHandler = extern "C" fn(execute_data: &mut ExecuteData, retval:
 pub type FunctionHandler =
 extern "vectorcall" fn(execute_data: &mut ExecuteData, retval: &mut Zval);
 
+fn from_zif_handler(handler: zif_handler) -> Result<FunctionHandler, &'static str> {
+    if let Some(zif) = handler {
+        Ok(unsafe { std::mem::transmute(zif) })
+    } else {
+        Err("zif_handler is None")
+    }
+}
+
+fn to_zif_handler(handler: FunctionHandler) -> zif_handler {
+    Some(unsafe { std::mem::transmute(handler) })
+}
+
 #[derive(Clone)]
 pub struct ZendFunctionHook {
     pub hooked_function_name: String,
-    pub handler: zif_handler,
-    pub previous_handler: zif_handler,
+    pub handler: FunctionHandler,
+    pub previous_handler: FunctionHandler,
 }
 
 thread_local! {
@@ -51,8 +65,10 @@ pub fn remove_all_function_hooks() {
 
 pub fn setup_function_hooks() {
     FUNCTION_HOOKS.with(|hooks| {
-        for hook in hooks.borrow().iter() {
-            hook_function(hook.handler, &hook.hooked_function_name).unwrap();
+        for hook in hooks.borrow_mut().iter_mut() {
+            if let Ok(Some(previous_handler)) = hook_function(hook.handler, &hook.hooked_function_name) {
+                hook.previous_handler = previous_handler;
+            }
         }
     });
 }
@@ -65,8 +81,8 @@ pub fn remove_function_hooks() {
     });
 }
 
-fn hook_function(handler: zif_handler, func_name: &str) -> Result<(), Box<dyn std::error::Error>> {
-    // Ищем функцию в глобальной таблице
+fn hook_function(handler: FunctionHandler, func_name: &str) -> Result<Option<FunctionHandler>, Box<dyn std::error::Error>> {
+
     let mut zend_function = Function::try_from_function(func_name)
         .ok_or_else(|| format!("The function '{}' was not found in Zend.", func_name))?;
 
@@ -74,13 +90,13 @@ fn hook_function(handler: zif_handler, func_name: &str) -> Result<(), Box<dyn st
         return Err(format!("Function '{}' is not an internal function.", func_name).into());
     }
 
-    unsafe {
-        // Сохраняем оригинальный обработчик, если нужно
-        let _original_handler = zend_function.internal_function.handler;
+    zend_function.internal_function.handler = to_zif_handler(handler);
 
-        // Подменяем обработчик на новый
-        zend_function.internal_function.handler = handler;
+    Ok(unsafe {
+        zend_function.internal_function.handler
+            .map(|existing_handler| {
+                from_zif_handler(Some(existing_handler)).expect("Failed to convert handler")
+            })
     }
-
-    Ok(())
+    )
 }
