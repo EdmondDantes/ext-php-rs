@@ -1,16 +1,21 @@
 use std::cell::RefCell;
-use std::ffi::c_void;
-use crate::{types, zend};
-use crate::zend::{Function, ExecutorGlobals};
+use crate::flags::FunctionType;
+use crate::zend::{ExecuteData, Function};
+use crate::ffi::{zif_handler};
+use crate::types::Zval;
+
+/// Function representation in Rust.
+#[cfg(not(windows))]
+pub type FunctionHandler = extern "C" fn(execute_data: &mut ExecuteData, retval: &mut Zval);
+#[cfg(windows)]
+pub type FunctionHandler =
+extern "vectorcall" fn(execute_data: &mut ExecuteData, retval: &mut Zval);
 
 #[derive(Clone)]
 pub struct ZendFunctionHook {
     pub hooked_function_name: String,
-    pub handler: extern "C" fn(
-        ex: &mut zend::ExecuteData,
-        return_value: &mut types::Zval,
-    ),
-    pub previous_handler: Option<*const c_void>,
+    pub handler: zif_handler,
+    pub previous_handler: zif_handler,
 }
 
 thread_local! {
@@ -47,7 +52,7 @@ pub fn remove_all_function_hooks() {
 pub fn setup_function_hooks() {
     FUNCTION_HOOKS.with(|hooks| {
         for hook in hooks.borrow().iter() {
-            hook_function(hook.handler as *const c_void, &hook.hooked_function_name).unwrap();
+            hook_function(hook.handler, &hook.hooked_function_name).unwrap();
         }
     });
 }
@@ -55,27 +60,26 @@ pub fn setup_function_hooks() {
 pub fn remove_function_hooks() {
     FUNCTION_HOOKS.with(|hooks| {
         for hook in hooks.borrow().iter() {
-            hook_function(hook.previous_handler.unwrap(), &hook.hooked_function_name).unwrap();
+            hook_function(hook.previous_handler, &hook.hooked_function_name).unwrap();
         }
     });
 }
 
-fn hook_function(func_ptr: *const c_void, func_name: &str) -> Result<(), Box<dyn std::error::Error>> {
+fn hook_function(handler: zif_handler, func_name: &str) -> Result<(), Box<dyn std::error::Error>> {
+    // Ищем функцию в глобальной таблице
+    let mut zend_function = Function::try_from_function(func_name)
+        .ok_or_else(|| format!("The function '{}' was not found in Zend.", func_name))?;
 
-    // Получаем глобальную таблицу функций
-    let function_table = ExecutorGlobals::get()
-        .function_table()
-        .expect("Error: function table is not available");
+    if zend_function.function_type() != FunctionType::Internal {
+        return Err(format!("Function '{}' is not an internal function.", func_name).into());
+    }
 
-    if let Some(zval_function) = function_table.get(func_name) {
-        let mut zend_function = Function::from(zval_function.as_ptr());
+    unsafe {
+        // Сохраняем оригинальный обработчик, если нужно
+        let _original_handler = zend_function.internal_function.handler;
 
-        unsafe {
-            zend_function.internal_function.handler = Some(func_ptr);
-        }
-
-    } else {
-        return Err(print!("The function '{}' was not found in Zend.", func_name).into());
+        // Подменяем обработчик на новый
+        zend_function.internal_function.handler = handler;
     }
 
     Ok(())
