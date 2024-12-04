@@ -37,7 +37,7 @@ pub fn parse_function_hook(args: AttributeArgs, input: ItemFn) -> Result<TokenSt
     // This can be overridden by the `name` attribute argument
     let default_function_name = input.sig.ident.to_string();
 
-    match function::parser(args, input, None) {
+    match function::parser(args, input, Some(false)) {
         Ok((token_stream, zend_function)) => {
 
             let hooked_function_name = attr_args.name.unwrap_or_else(|| default_function_name);
