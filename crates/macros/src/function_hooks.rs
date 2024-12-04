@@ -18,7 +18,12 @@ pub struct AttrArgs {
 }
 
 lazy_static! {
-    static ref FUNCTION_HOOKS: RwLock<HashMap<String, ZendFunctionHook>> = RwLock::new(HashMap::new());
+    static ref FUNCTION_HOOKS: RwLock<HashMap<String, TokenStream>> = RwLock::new(HashMap::new());
+}
+
+fn add_function_hook_code(hook_name: String, token_stream: TokenStream) {
+    let mut hooks = FUNCTION_HOOKS.write().unwrap();
+    hooks.insert(hook_name, token_stream);
 }
 
 pub fn parse_function_hook(args: AttributeArgs, input: ItemFn) -> Result<TokenStream> {
@@ -45,7 +50,20 @@ pub fn parse_function_hook(args: AttributeArgs, input: ItemFn) -> Result<TokenSt
             // from the hook function by name: `PREVIOUS_` + `hooked_function_name`
             let previous_ident = syn::Ident::new(&previous_name, Span::call_site());
 
-            let add_hook_code = quote! {
+            //
+            // Issue with fully qualified path to the hook function
+            // Rust does not allow to use fully qualified path to the function.
+            //
+            add_function_hook_code(hooked_function_name.clone(), quote! {
+                // #hooked_function_name hook
+                ::ext_php_rs::hooks::add_function_hook(::ext_php_rs::hooks::ZendFunctionHook {
+                    hooked_function_name: #hooked_function_name,
+                    handler: #ident,
+                    previous_handler: None,
+                });
+            });
+
+            let hook_code = quote! {
 
                 #token_stream
 
@@ -54,17 +72,9 @@ pub fn parse_function_hook(args: AttributeArgs, input: ItemFn) -> Result<TokenSt
                 }
             };
 
-            /*
-                ::ext_php_rs::hooks::add_function_hook(::ext_php_rs::hooks::ZendFunctionHook {
-                    hooked_function_name: #hooked_function_name,
-                    handler: #ident,
-                    previous_handler: None,
-                });
-            */
+            //println!("add_hook_code: {:?}", hook_code.to_string());
 
-            println!("add_hook_code: {:?}", add_hook_code.to_string());
-
-            Ok(add_hook_code)
+            Ok(hook_code)
         }
         Err(e) => Err(e),
     }.into()
