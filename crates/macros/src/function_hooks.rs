@@ -18,12 +18,12 @@ pub struct AttrArgs {
 }
 
 lazy_static! {
-    static ref FUNCTION_HOOKS: RwLock<HashMap<String, TokenStream>> = RwLock::new(HashMap::new());
+    static ref FUNCTION_HOOKS: RwLock<HashMap<String, String>> = RwLock::new(HashMap::new());
 }
 
 fn add_function_hook_code(hook_name: String, token_stream: TokenStream) {
     let mut hooks = FUNCTION_HOOKS.write().unwrap();
-    hooks.insert(hook_name, token_stream);
+    hooks.insert(hook_name, token_stream.to_string());
 }
 
 pub fn parse_function_hook(args: AttributeArgs, input: ItemFn) -> Result<TokenStream> {
@@ -68,7 +68,7 @@ pub fn parse_function_hook(args: AttributeArgs, input: ItemFn) -> Result<TokenSt
                 #token_stream
 
                 thread_local! {
-                    pub static #previous_ident: RefCell<Option<FunctionHandler>> = RefCell::new(None);
+                    pub static #previous_ident: std::cell::RefCell<Option<ext_php_rs::hooks::FunctionHandler>> = std::cell::RefCell::new(None);
                 }
             };
 
@@ -82,11 +82,11 @@ pub fn parse_function_hook(args: AttributeArgs, input: ItemFn) -> Result<TokenSt
 
 pub fn generate_function_hooks() -> TokenStream {
     let hooks = FUNCTION_HOOKS.read().unwrap();
-    let mut tokens = TokenStream::new();
 
-    for (_, hook) in hooks.iter() {
-        tokens.extend(hook.clone());
-    }
+    let combined_hooks: String = hooks.values().cloned().collect::<Vec<_>>().join("\n");
 
-    tokens
+    syn::parse_str(&combined_hooks).unwrap_or_else(|e| {
+        eprintln!("Parsing error: {}", e);
+        TokenStream::new()
+    })
 }
