@@ -30,7 +30,7 @@ fn to_zif_handler(handler: FunctionHandler) -> zif_handler {
 pub struct ZendFunctionHook {
     pub hooked_function_name: String,
     pub handler: FunctionHandler,
-    pub previous_handler: FunctionHandler,
+    pub previous_handler: Option<FunctionHandler>,
 }
 
 thread_local! {
@@ -80,7 +80,7 @@ pub fn setup_function_hooks() {
     FUNCTION_HOOKS.with(|hooks| {
         for hook in hooks.borrow_mut().values_mut() {
             if let Ok(Some(previous_handler)) = hook_function(hook.handler, &hook.hooked_function_name) {
-                hook.previous_handler = previous_handler;
+                hook.previous_handler = Some(previous_handler);
             }
         }
     });
@@ -92,7 +92,9 @@ pub fn setup_function_hooks() {
 pub fn remove_function_hooks() {
     FUNCTION_HOOKS.with(|hooks| {
         for hook in hooks.borrow().values() {
-            hook_function(hook.previous_handler, &hook.hooked_function_name).unwrap();
+            if let Some(previous_handler) = hook.previous_handler {
+                hook_function(previous_handler, &hook.hooked_function_name).unwrap();
+            }
         }
     });
 }

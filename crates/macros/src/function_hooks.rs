@@ -57,7 +57,7 @@ pub fn parse_function_hook(args: AttributeArgs, input: ItemFn) -> Result<TokenSt
             add_function_hook_code(hooked_function_name.clone(), quote! {
                 // #hooked_function_name hook
                 ::ext_php_rs::hooks::add_function_hook(::ext_php_rs::hooks::ZendFunctionHook {
-                    hooked_function_name: #hooked_function_name,
+                    hooked_function_name: #hooked_function_name.to_string(),
                     handler: #ident,
                     previous_handler: None,
                 });
@@ -71,8 +71,6 @@ pub fn parse_function_hook(args: AttributeArgs, input: ItemFn) -> Result<TokenSt
                     pub static #previous_ident: std::cell::RefCell<Option<ext_php_rs::hooks::FunctionHandler>> = std::cell::RefCell::new(None);
                 }
             };
-
-            //println!("add_hook_code: {:?}", hook_code.to_string());
 
             Ok(hook_code)
         }
