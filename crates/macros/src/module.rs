@@ -64,8 +64,9 @@ pub fn parser(input: ItemFn) -> Result<TokenStream> {
     let shutdown_fn = quote! {
         #[doc(hidden)]
         #[no_mangle]
-        pub extern "C" fn shutdown_function() {
+        pub extern "C" fn shutdown_function(_type: i32, _module_number: i32) -> i32 {
             ::ext_php_rs::hooks::remove_function_hooks();
+            0
         }
     };
 
