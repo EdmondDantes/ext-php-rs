@@ -60,10 +60,20 @@ pub fn parser(input: ItemFn) -> Result<TokenStream> {
         .collect::<Result<Vec<_>>>()?;
     let describe_fn = generate_stubs(&state);
 
+    // Define the shutdown function for hooked functions restoration
+    let shutdown_fn = quote! {
+        #[doc(hidden)]
+        #[no_mangle]
+        pub extern "C" fn shutdown_function() {
+            ::ext_php_rs::hooks::remove_function_hooks();
+        }
+    };
+
     let result = quote! {
         #(#registered_classes_impls)*
 
         #startup_fn
+        #shutdown_fn
 
         #[doc(hidden)]
         #[no_mangle]
@@ -77,6 +87,7 @@ pub fn parser(input: ItemFn) -> Result<TokenStream> {
                 env!("CARGO_PKG_VERSION")
             )
             #startup
+            .shutdown_function(shutdown_function)
             #(.function(#functions.unwrap()))*
             ;
 
