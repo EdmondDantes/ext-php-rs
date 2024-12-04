@@ -7,6 +7,7 @@ use quote::quote;
 use syn::{AttributeArgs, Expr, ItemFn, Signature};
 
 use crate::{class::Class, constant::Constant, STATE};
+use crate::function_hooks::generate_function_hooks;
 
 #[derive(Default, Debug, FromMeta)]
 #[darling(default)]
@@ -37,6 +38,8 @@ pub fn parser(args: Option<AttributeArgs>, input: ItemFn) -> Result<TokenStream>
         (None, Some(quote! { internal(ty, module_number); }))
     };
 
+    let function_hooks = generate_function_hooks();
+
     let func = quote! {
         #[doc(hidden)]
         pub extern "C" fn #ident(ty: i32, module_number: i32) -> i32 {
@@ -53,6 +56,8 @@ pub fn parser(args: Option<AttributeArgs>, input: ItemFn) -> Result<TokenStream>
             #(#classes)*
             #(#constants)*
             #after
+            #function_hooks
+            ::ext_php_rs::hooks::setup_function_hooks();
 
             0
         }

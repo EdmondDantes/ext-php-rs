@@ -79,3 +79,14 @@ pub fn parse_function_hook(args: AttributeArgs, input: ItemFn) -> Result<TokenSt
         Err(e) => Err(e),
     }.into()
 }
+
+pub fn generate_function_hooks() -> TokenStream {
+    let hooks = FUNCTION_HOOKS.read().unwrap();
+    let mut tokens = TokenStream::new();
+
+    for (_, hook) in hooks.iter() {
+        tokens.extend(hook.clone());
+    }
+
+    tokens
+}
