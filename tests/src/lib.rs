@@ -113,6 +113,11 @@ pub fn test_class(string: String, number: i32) -> TestClass {
     }
 }
 
+#[php_function_hook]
+pub fn chr() {
+    "Hello from the hook!";
+}
+
 extern "C" fn startup(_type: i32, _module_number: i32) -> i32 {
     setup_function_hooks();
     0

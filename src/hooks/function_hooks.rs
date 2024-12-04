@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use std::cell::RefCell;
+use std::collections::HashMap;
 use crate::flags::FunctionType;
 use crate::zend::{ExecuteData, Function};
 use crate::ffi::{zif_handler};
@@ -33,25 +34,34 @@ pub struct ZendFunctionHook {
 }
 
 thread_local! {
-    static FUNCTION_HOOKS: RefCell<Vec<ZendFunctionHook>> = RefCell::new(Vec::new());
+    static FUNCTION_HOOKS: RefCell<HashMap<String, ZendFunctionHook>> = RefCell::new(HashMap::new());
 }
 
 ///
-/// Add a hook to the list of hooks
+/// Add a hook to the map of hooks
 ///
 pub fn add_function_hook(hook: ZendFunctionHook) {
     FUNCTION_HOOKS.with(|hooks| {
-        hooks.borrow_mut().push(hook);
+        hooks.borrow_mut().insert(hook.hooked_function_name.clone(), hook);
     });
 }
 
 ///
-/// Get the list of hooks
+/// Get a hook by function name
 ///
-pub fn get_function_hooks() -> Vec<ZendFunctionHook> {
+pub fn get_function_hook(function_name: &str) -> Option<ZendFunctionHook> {
     FUNCTION_HOOKS.with(|hooks| {
-        hooks.borrow().clone()
+        hooks.borrow().get(function_name).cloned()
     })
+}
+
+///
+/// Remove a hook by function name
+///
+pub fn remove_function_hook(function_name: &str) {
+    FUNCTION_HOOKS.with(|hooks| {
+        hooks.borrow_mut().remove(function_name);
+    });
 }
 
 ///
@@ -63,9 +73,12 @@ pub fn remove_all_function_hooks() {
     });
 }
 
+///
+/// Set up hooks for all functions
+///
 pub fn setup_function_hooks() {
     FUNCTION_HOOKS.with(|hooks| {
-        for hook in hooks.borrow_mut().iter_mut() {
+        for hook in hooks.borrow_mut().values_mut() {
             if let Ok(Some(previous_handler)) = hook_function(hook.handler, &hook.hooked_function_name) {
                 hook.previous_handler = previous_handler;
             }
@@ -73,9 +86,12 @@ pub fn setup_function_hooks() {
     });
 }
 
+///
+/// Remove all function hooks
+///
 pub fn remove_function_hooks() {
     FUNCTION_HOOKS.with(|hooks| {
-        for hook in hooks.borrow().iter() {
+        for hook in hooks.borrow().values() {
             hook_function(hook.previous_handler, &hook.hooked_function_name).unwrap();
         }
     });

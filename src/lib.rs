@@ -54,6 +54,7 @@ pub mod prelude {
     pub use crate::php_print;
     pub use crate::php_println;
     pub use crate::php_startup;
+    pub use crate::php_function_hook;
     pub use crate::types::ZendCallable;
     pub use crate::ZvalConvert;
 }
@@ -301,6 +302,11 @@ pub use ext_php_rs_derive::php_extern;
 /// [`ZendCallable`]: crate::types::ZendCallable
 /// [`PhpException`]: crate::exception::PhpException
 pub use ext_php_rs_derive::php_function;
+
+/// Defines a function that will act as a hook for a PHP function.
+///
+///
+pub use ext_php_rs_derive::php_function_hook;
 
 /// Annotates a structs `impl` block, declaring that all methods and constants
 /// declared inside the `impl` block will be declared as PHP methods and
