@@ -101,12 +101,18 @@ pub fn remove_function_hooks() {
 
 fn hook_function(handler: FunctionHandler, func_name: &str) -> Result<Option<FunctionHandler>, Box<dyn std::error::Error>> {
 
+    println!("Hooking function: {}", func_name);
+
     let mut zend_function = Function::try_from_function(func_name)
         .ok_or_else(|| format!("The function '{}' was not found in Zend.", func_name))?;
+
+    println!("Function type: {:?}", zend_function.function_type());
 
     if zend_function.function_type() != FunctionType::Internal {
         return Err(format!("Function '{}' is not an internal function.", func_name).into());
     }
+
+    println!("Function is internal");
 
     zend_function.internal_function.handler = to_zif_handler(handler);
 
